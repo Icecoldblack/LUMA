@@ -167,4 +167,17 @@ app.get('/api/team-snapshot', (req, res) => {
 });
 
 const PORT = process.env.PORT || 3001;
-app.listen(PORT, () => console.log(`LUMA backend on http://localhost:${PORT}`));
+const server = app.listen(PORT, () => console.log(`LUMA backend on http://localhost:${PORT}`));
+
+server.on('error', (err) => {
+  if (err.code === 'EADDRINUSE') {
+    console.error(`Port ${PORT} in use — kill the process holding it and restart.`);
+    process.exit(1);
+  } else {
+    throw err;
+  }
+});
+
+// Clean shutdown so --watch restarts don't leave zombie processes
+process.on('SIGTERM', () => server.close(() => process.exit(0)));
+process.on('SIGINT',  () => server.close(() => process.exit(0)));
