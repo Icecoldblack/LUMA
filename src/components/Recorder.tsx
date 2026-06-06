@@ -83,7 +83,7 @@ export default function Recorder({ count, onAdd }: RecorderProps) {
           onChange={(e) => setName(e.target.value)}
           aria-label="Your name"
         />
-        <span className="engine-tag on">Claude analysis</span>
+        <span className="engine-tag on">Luma analysis</span>
       </div>
 
       <div className="record-stage">

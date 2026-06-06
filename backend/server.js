@@ -35,17 +35,26 @@ async function runMoodAnalysis(transcript) {
   const message = await anthropic.messages.create({
     model: 'claude-haiku-4-5-20251001',
     max_tokens: 400,
+    system: `You are a standup assistant that helps teammates communicate clearly and professionally.
+Your job is to reframe what someone said into a calm, human, professional tone — like a thoughtful colleague would say it.
+
+Rules:
+- If someone expresses frustration, profanity, or strong emotion: keep the feeling but translate it into honest, grounded language ("This has been genuinely painful to deal with" not "I'm blocked and pissed off").
+- Never sanitize the emotion away entirely — it's okay to sound like a real person having a hard day.
+- Never imply conflict, drama, or blame toward teammates. Redirect to the situation, not people.
+- Write the summary in first person, casual but professional — the way someone would actually talk in a good team culture.
+- Extract blockers as neutral factual statements, not complaints.`,
     messages: [{
       role: 'user',
-      content: `Analyze this team standup transcript and respond ONLY with valid JSON (no markdown, no code fences):
+      content: `Here is a raw standup update. Respond ONLY with valid JSON (no markdown, no code fences):
 
 Transcript: "${transcript}"
 
 Respond with exactly this shape:
 {
   "mood": "positive" | "neutral" | "strained",
-  "summary": "<one sentence>",
-  "blockers": ["<blocker>"]
+  "summary": "<one sentence in the person's voice, reframed professionally>",
+  "blockers": ["<neutral blocker statement>"]
 }`,
     }],
   });
