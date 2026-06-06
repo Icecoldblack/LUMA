@@ -1,35 +1,50 @@
 # LUMA
 
-Welcome to the LUMA project!
+Make collaboration feel human again.
 
-## Description
+LUMA lets teammates do a quick voice check-in and surfaces how everyone is feeling — mood, blockers, and a team-wide snapshot — so your team stays connected without another meeting.
 
-A brief description of what this project does and who it's for.
+## How it works
 
-## Getting Started
+1. Hit record → Browser captures your voice via Web Speech API
+2. Transcript is sent to Claude (Anthropic API) → extracts mood, blockers, and a one-line summary
+3. Each teammate gets a summary card showing their current state
+4. A team-wide mood snapshot aggregates everyone at the bottom
 
-### Prerequisites
+## Tech stack
 
-* List of prerequisites needed to run the project.
+- **Frontend**: React, scaffolded with Lovable
+- **AI**: Anthropic API (Claude) — mood + blocker extraction from transcript text
+- **Speech**: Web Speech API (`SpeechRecognition`) — no library needed
+- **Storage**: React state (in-memory, no backend)
 
-### Installation
+## Project structure
 
-1. Clone the repository:
+```
+src/
+  api/analyzeTranscript.js   # Anthropic API call → { mood, blockers, summary }
+  hooks/useTeamState.js      # App-wide teammate state + update functions
+  state/teammates.js         # Hardcoded fake teammates for demo
+  utils/aggregateMood.js     # Rolls up individual moods into team snapshot
+```
+
+## Setup
+
+1. Clone the repo and install dependencies:
    ```bash
-   git clone https://github.com/Icecoldblack/LUMA.git
+   npm install
    ```
-2. Navigate to the project directory:
+
+2. Create a `.env` file in the root:
+   ```
+   VITE_ANTHROPIC_API_KEY=your_key_here
+   ```
+
+3. Run the dev server:
    ```bash
-   cd LUMA
+   npm run dev
+   ```
 
-## Usage
+## Team
 
-Provide examples and explanations on how to use the project.
-
-## Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
-
-## License
-
-This project is licensed under the [MIT License](LICENSE) (or update with your actual license).
+Built at a hackathon with a 2:30 PM ET deadline. 4 people, parallel workstreams, no sleep.
