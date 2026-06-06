@@ -61,7 +61,7 @@ app.post('/api/analyze', async (req, res) => {
     try {
       analysis = await analyzeText(transcript);
     } catch {
-      return res.status(500).json({ error: 'Claude returned malformed JSON', raw: message.content[0].text });
+      return res.status(500).json({ error: 'Analysis failed — Claude returned malformed JSON' });
     }
 
     res.json({ transcript, ...analysis });
