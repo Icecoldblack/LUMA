@@ -50,6 +50,7 @@ app.post('/api/analyze', async (req, res) => {
       file: fs.createReadStream(tempPath),
       model: 'whisper-large-v3-turbo',
       response_format: 'json',
+      language: 'en',
     });
 
     const transcript = transcription.text?.trim();
