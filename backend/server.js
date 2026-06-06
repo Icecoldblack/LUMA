@@ -79,7 +79,8 @@ Transcript: "${transcript}"
 
     let analysis;
     try {
-      analysis = JSON.parse(message.content[0].text);
+      const raw = message.content[0].text.replace(/```json\n?|\```/g, '').trim();
+      analysis = JSON.parse(raw);
     } catch {
       return res.status(500).json({ error: 'Claude returned malformed JSON', raw: message.content[0].text });
     }
