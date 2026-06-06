@@ -1,17 +1,12 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import Logo from '../components/Logo'
 import Recorder from '../components/Recorder'
 import EntryCard from '../components/EntryCard'
 import TeamMood from '../components/TeamMood'
-import ApiKeyPanel from '../components/ApiKeyPanel'
 import { localAnalyze } from '../lib/analysis'
 import type { Entry } from '../components/types'
 
-const API_KEY_STORAGE = 'luma.anthropicKey'
-
-// Two demo teammates so the page (and the team snapshot) reads as a real
-// standup before you add your own update.
 function seedEntries(): Entry[] {
   const maya =
     'Wrapped the onboarding flow and shipped it to staging today. Feeling good, no blockers on my end.'
@@ -41,25 +36,8 @@ function seedEntries(): Entry[] {
   ]
 }
 
-/**
- * The working app. Flow:
- *   record (Web Speech API) → transcript → analyze (Claude or local)
- *   → a summary card per teammate → a team-wide mood snapshot at the bottom.
- */
 export default function StandupPage() {
   const [entries, setEntries] = useState<Entry[]>(seedEntries)
-  const [apiKey, setApiKey] = useState('')
-
-  // Persist the optional key across reloads.
-  useEffect(() => {
-    setApiKey(localStorage.getItem(API_KEY_STORAGE) ?? '')
-  }, [])
-
-  function saveKey(key: string) {
-    setApiKey(key)
-    if (key) localStorage.setItem(API_KEY_STORAGE, key)
-    else localStorage.removeItem(API_KEY_STORAGE)
-  }
 
   function addEntry(entry: Entry) {
     setEntries((prev) => [entry, ...prev])
@@ -92,9 +70,7 @@ export default function StandupPage() {
           </p>
         </div>
 
-        <ApiKeyPanel apiKey={apiKey} onChange={saveKey} />
-
-        <Recorder apiKey={apiKey} count={entries.length} onAdd={addEntry} />
+        <Recorder count={entries.length} onAdd={addEntry} />
 
         <section className="entries-section">
           <h2 className="section-title">Today's updates</h2>

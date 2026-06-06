@@ -18,12 +18,11 @@ function initialsOf(name: string): string {
 }
 
 interface RecorderProps {
-  apiKey: string
   count: number
   onAdd: (entry: Entry) => void
 }
 
-export default function Recorder({ apiKey, count, onAdd }: RecorderProps) {
+export default function Recorder({ count, onAdd }: RecorderProps) {
   const { supported, listening, transcript, setTranscript, start, stop, reset, error } =
     useSpeechRecognition()
   const [name, setName] = useState('')
@@ -39,10 +38,10 @@ export default function Recorder({ apiKey, count, onAdd }: RecorderProps) {
     setNote(null)
 
     const text = transcript.trim()
-    const outcome = await analyzeStandup(text, apiKey || undefined)
+    const outcome = await analyzeStandup(text)
     const displayName = name.trim() || 'You'
 
-    onAdd({
+    const entry: Entry = {
       id: crypto.randomUUID(),
       name: displayName,
       initials: initialsOf(displayName),
@@ -51,7 +50,22 @@ export default function Recorder({ apiKey, count, onAdd }: RecorderProps) {
       transcript: text,
       analysis: outcome.analysis,
       source: outcome.source,
-    })
+    }
+
+    onAdd(entry)
+
+    // Persist to backend (fire-and-forget — failure is non-blocking)
+    fetch('/api/checkin', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        teammateId: entry.id,
+        transcript: entry.transcript,
+        mood: entry.analysis.mood,
+        summary: entry.analysis.summary,
+        blockers: entry.analysis.blockers,
+      }),
+    }).catch(() => {})
 
     if (outcome.note) setNote(outcome.note)
     reset()
@@ -69,9 +83,7 @@ export default function Recorder({ apiKey, count, onAdd }: RecorderProps) {
           onChange={(e) => setName(e.target.value)}
           aria-label="Your name"
         />
-        <span className={`engine-tag ${apiKey ? 'on' : ''}`}>
-          {apiKey ? 'Claude' : 'Local analysis'}
-        </span>
+        <span className="engine-tag on">Claude analysis</span>
       </div>
 
       <div className="record-stage">

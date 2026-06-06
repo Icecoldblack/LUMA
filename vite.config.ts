@@ -28,4 +28,9 @@ export default defineConfig({
       replacement: nodeStub,
     })),
   },
+  server: {
+    proxy: {
+      '/api': 'http://localhost:3001',
+    },
+  },
 })

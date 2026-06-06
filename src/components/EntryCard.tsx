@@ -33,7 +33,7 @@ export default function EntryCard({ entry }: { entry: Entry }) {
       )}
 
       <details className="entry-transcript">
-        <summary>Transcript · {entry.source === 'claude' ? 'Claude' : 'local'}</summary>
+        <summary>Transcript · {entry.source === 'backend' ? 'Claude' : 'local'}</summary>
         <p>“{entry.transcript}”</p>
       </details>
     </div>

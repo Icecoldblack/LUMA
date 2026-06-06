@@ -9,5 +9,5 @@ export interface Entry {
   time: string
   transcript: string
   analysis: Analysis
-  source: 'claude' | 'local'
+  source: 'backend' | 'local'
 }

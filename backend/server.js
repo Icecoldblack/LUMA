@@ -1,4 +1,4 @@
-require('dotenv').config();
+require('dotenv').config({ path: require('path').resolve(__dirname, '.env') });
 const express = require('express');
 const cors = require('cors');
 const fs = require('fs');
@@ -31,12 +31,50 @@ app.get('/api/teammates', (req, res) => {
   res.json(result);
 });
 
-// POST /api/analyze — base64 audio → transcript → mood analysis
-app.post('/api/analyze', async (req, res) => {
-  const { audioBase64, mimeType = 'audio/webm' } = req.body;
+async function runMoodAnalysis(transcript) {
+  const message = await anthropic.messages.create({
+    model: 'claude-haiku-4-5-20251001',
+    max_tokens: 400,
+    messages: [{
+      role: 'user',
+      content: `Analyze this team standup transcript and respond ONLY with valid JSON (no markdown, no code fences):
 
+Transcript: "${transcript}"
+
+Respond with exactly this shape:
+{
+  "mood": "positive" | "neutral" | "strained",
+  "summary": "<one sentence>",
+  "blockers": ["<blocker>"]
+}`,
+    }],
+  });
+
+  const raw = message.content[0].text.replace(/```json\n?|```/g, '').trim();
+  return JSON.parse(raw);
+}
+
+// POST /api/analyze — accepts { transcript } (text) or { audioBase64, mimeType } (audio)
+app.post('/api/analyze', async (req, res) => {
+  const { transcript: incomingTranscript, audioBase64, mimeType = 'audio/webm' } = req.body;
+
+  // Text path — frontend already has a transcript from Web Speech API
+  if (incomingTranscript) {
+    const transcript = incomingTranscript.trim();
+    if (!transcript) return res.status(400).json({ error: 'transcript is empty' });
+
+    try {
+      const analysis = await runMoodAnalysis(transcript);
+      return res.json({ transcript, ...analysis });
+    } catch (err) {
+      console.error('[/api/analyze text]', err);
+      return res.status(500).json({ error: err.message });
+    }
+  }
+
+  // Audio path — base64 audio → Groq Whisper → mood analysis
   if (!audioBase64) {
-    return res.status(400).json({ error: 'audioBase64 is required' });
+    return res.status(400).json({ error: 'transcript or audioBase64 is required' });
   }
 
   const ext = mimeType.includes('mp4') ? 'mp4' : mimeType.includes('ogg') ? 'ogg' : 'webm';
@@ -45,7 +83,6 @@ app.post('/api/analyze', async (req, res) => {
   try {
     fs.writeFileSync(tempPath, Buffer.from(audioBase64, 'base64'));
 
-    // Step 1: transcribe
     const transcription = await groq.audio.transcriptions.create({
       file: fs.createReadStream(tempPath),
       model: 'whisper-large-v3-turbo',
@@ -57,37 +94,10 @@ app.post('/api/analyze', async (req, res) => {
       return res.status(422).json({ error: 'Could not transcribe — try speaking louder or longer.' });
     }
 
-    // Step 2: mood analysis
-    const message = await anthropic.messages.create({
-      model: 'claude-haiku-4-5-20251001',
-      max_tokens: 400,
-      messages: [{
-        role: 'user',
-        content: `Analyze this team standup transcript and respond ONLY with valid JSON (no markdown):
-
-Transcript: "${transcript}"
-
-{
-  "mood": "great" | "good" | "neutral" | "stressed" | "blocked",
-  "moodScore": <integer 1-5>,
-  "summary": "<1-2 sentences>",
-  "blockers": ["..."],
-  "wins": ["..."]
-}`,
-      }],
-    });
-
-    let analysis;
-    try {
-      const raw = message.content[0].text.replace(/```json\n?|\```/g, '').trim();
-      analysis = JSON.parse(raw);
-    } catch {
-      return res.status(500).json({ error: 'Claude returned malformed JSON', raw: message.content[0].text });
-    }
-
+    const analysis = await runMoodAnalysis(transcript);
     res.json({ transcript, ...analysis });
   } catch (err) {
-    console.error('[/api/analyze]', err);
+    console.error('[/api/analyze audio]', err);
     res.status(500).json({ error: err.message });
   } finally {
     if (fs.existsSync(tempPath)) fs.unlinkSync(tempPath);
