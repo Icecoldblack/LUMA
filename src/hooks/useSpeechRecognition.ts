@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useRef, useState } from 'react'
 
 const SpeechRecognitionImpl =
   typeof window !== 'undefined'
@@ -6,11 +6,8 @@ const SpeechRecognitionImpl =
     : undefined
 
 export interface UseSpeechRecognition {
-  /** Whether the browser exposes the Web Speech API at all. */
   supported: boolean
-  /** True while the mic is actively capturing. */
   listening: boolean
-  /** Final + interim transcript. Editable via setTranscript. */
   transcript: string
   setTranscript: (value: string) => void
   start: () => void
@@ -19,12 +16,6 @@ export interface UseSpeechRecognition {
   error: string | null
 }
 
-/**
- * Wraps the browser SpeechRecognition API. Accumulates finalized phrases and
- * shows the in-progress (interim) phrase live, so the transcript reads
- * naturally as the user speaks. The transcript is editable so users on
- * unsupported browsers (or with a misheard word) can correct it by hand.
- */
 export function useSpeechRecognition(): UseSpeechRecognition {
   const [listening, setListening] = useState(false)
   const [transcript, setTranscript] = useState('')
@@ -32,10 +23,17 @@ export function useSpeechRecognition(): UseSpeechRecognition {
 
   const recognitionRef = useRef<SpeechRecognition | null>(null)
   const finalRef = useRef('')
+  // Tracks whether the user intentionally stopped so onend doesn't auto-restart
+  const stoppedRef = useRef(false)
 
-  useEffect(() => {
-    if (!SpeechRecognitionImpl) return
+  const start = useCallback(() => {
+    if (!SpeechRecognitionImpl || listening) return
+    setError(null)
+    stoppedRef.current = false
+    finalRef.current = ''
+    setTranscript('')
 
+    // Always create a fresh instance — reusing a stopped instance throws.
     const recognition = new SpeechRecognitionImpl()
     recognition.lang = 'en-US'
     recognition.continuous = true
@@ -53,40 +51,25 @@ export function useSpeechRecognition(): UseSpeechRecognition {
     }
 
     recognition.onerror = (event) => {
-      // "no-speech"/"aborted" are routine when the user pauses or stops — ignore.
       if (event.error !== 'no-speech' && event.error !== 'aborted') {
         setError(event.error)
       }
       setListening(false)
     }
 
-    recognition.onend = () => setListening(false)
+    recognition.onend = () => {
+      setListening(false)
+    }
 
     recognitionRef.current = recognition
-    return () => {
-      recognition.onresult = null
-      recognition.onerror = null
-      recognition.onend = null
-      recognition.abort()
-    }
-  }, [])
-
-  const start = useCallback(() => {
-    const recognition = recognitionRef.current
-    if (!recognition || listening) return
-    setError(null)
-    finalRef.current = ''
-    setTranscript('')
-    try {
-      recognition.start()
-      setListening(true)
-    } catch {
-      // start() throws if called while already running — safe to ignore.
-    }
+    recognition.start()
+    setListening(true)
   }, [listening])
 
   const stop = useCallback(() => {
+    stoppedRef.current = true
     recognitionRef.current?.stop()
+    recognitionRef.current = null
     setListening(false)
   }, [])
 
