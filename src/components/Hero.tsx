@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
 import Reveal from './Reveal'
 import { ArrowRight, PlayTriangle } from './icons'
 
@@ -68,10 +69,10 @@ export default function Hero() {
             calm digest.
           </Reveal>
           <Reveal className="hero-cta">
-            <a href="#cta" className="pill-btn btn-primary">
-              Start free
+            <Link to="/standup" className="pill-btn btn-primary">
+              Let's get started
               <ArrowRight />
-            </a>
+            </Link>
             <button type="button" className="pill-btn btn-ghost" onClick={scrollToDemo}>
               <PlayTriangle />
               Hear a sample
