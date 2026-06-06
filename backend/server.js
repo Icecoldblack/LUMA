@@ -4,14 +4,12 @@ const cors = require('cors');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
-const Anthropic = require('@anthropic-ai/sdk');
 const Groq = require('groq-sdk');
+const { analyzeText } = require('./analyzeText');
 
 const app = express();
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
-
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
 // In-memory store
@@ -59,29 +57,9 @@ app.post('/api/analyze', async (req, res) => {
     }
 
     // Step 2: mood analysis
-    const message = await anthropic.messages.create({
-      model: 'claude-haiku-4-5-20251001',
-      max_tokens: 400,
-      messages: [{
-        role: 'user',
-        content: `Analyze this team standup transcript and respond ONLY with valid JSON (no markdown):
-
-Transcript: "${transcript}"
-
-{
-  "mood": "great" | "good" | "neutral" | "stressed" | "blocked",
-  "moodScore": <integer 1-5>,
-  "summary": "<1-2 sentences>",
-  "blockers": ["..."],
-  "wins": ["..."]
-}`,
-      }],
-    });
-
     let analysis;
     try {
-      const raw = message.content[0].text.replace(/```json\n?|\```/g, '').trim();
-      analysis = JSON.parse(raw);
+      analysis = await analyzeText(transcript);
     } catch {
       return res.status(500).json({ error: 'Claude returned malformed JSON', raw: message.content[0].text });
     }
@@ -114,6 +92,20 @@ app.post('/api/checkin', (req, res) => {
 
   checkins.push(checkin);
   res.status(201).json(checkin);
+});
+
+// POST /api/analyze-text — transcript string → { mood, blockers, summary }
+app.post('/api/analyze-text', async (req, res) => {
+  const { transcript } = req.body;
+  if (!transcript?.trim()) {
+    return res.status(400).json({ error: 'transcript is required' });
+  }
+  try {
+    res.json(await analyzeText(transcript));
+  } catch (err) {
+    console.error('[/api/analyze-text]', err);
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // GET /api/team-snapshot
